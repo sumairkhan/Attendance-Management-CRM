@@ -1,0 +1,131 @@
+﻿<%@ Page Title="" Language="VB" MasterPageFile="~/Admin/Site.master" AutoEventWireup="false"
+    CodeFile="EmployeeReport.aspx.vb" Inherits="Admin_Reports_HRIS_EmployeeReport" %>
+
+<%@ Register Assembly="Microsoft.ReportViewer.WebForms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
+    Namespace="Microsoft.Reporting.WebForms" TagPrefix="rsweb" %>
+<%@ Register Assembly="AjaxControlToolkit" Namespace="AjaxControlToolkit" TagPrefix="asp" %>
+<asp:Content ID="Content1" ContentPlaceHolderID="HeaderContents" runat="Server">
+    <link href="<%= Page.ResolveClientUrl("~/Admin/assets/vendor/bootstrap-datepicker/bootstrap-datepicker.css") %>"
+        rel="stylesheet" type="text/css" />
+        <link rel="stylesheet" href="<%= Page.ResolveClientUrl("~/Admin/assets/vendor/jquery-ui/jquery-ui.css") %>" />
+    <style type="text/css">
+        .style2
+        {
+        }
+        
+        .style3
+        {
+            width: 193px;
+            height: 20px;
+        }
+        
+        .style4
+        {
+            height: 20px;
+        }
+        
+        .txtRight
+        {
+            text-align: right !important;
+        }
+        
+        .txtCenter
+        {
+            text-align: center !important;
+        }
+        
+        .tblDetails tr th
+        {
+            padding-right: 10px;
+        }
+        
+        .form-horizontal .control-label
+        {
+            text-align: left;
+        }
+        
+        .lblError
+        {
+            color: Red;
+        }
+    </style>
+</asp:Content>
+<asp:Content ID="Content3" ContentPlaceHolderID="PageHeading" runat="Server">
+    <h1 class="page-title">
+        Employee Report
+    </h1>
+</asp:Content>
+<asp:Content ID="Content4" ContentPlaceHolderID="BodyContents" runat="Server">
+    <form class="form-horizontal fv-form fv-form-bootstrap" id="form1" runat="server">
+    <asp:ScriptManager ID="ScriptManager1" runat="server">
+    </asp:ScriptManager>
+    <div class="panel">
+        <div class="panel-body">
+            <asp:Label ID="lblStatus" runat="server"></asp:Label>
+            <asp:UpdatePanel ID="UpdatePanel1" runat="server">
+                <ContentTemplate>
+                    <div class="row" id="divReportArea" runat="server">
+                        <div class="clearfix">
+                        </div>
+                        <input id="Button2" type="button" onclick="doPrint();" value="   Print   " />
+                        <rsweb:ReportViewer ID="ReportViewer1" runat="server" Font-Names="Verdana" Font-Size="8pt"
+                            InteractiveDeviceInfos="(Collection)" WaitMessageFont-Names="Verdana" WaitMessageFont-Size="14pt"
+                            Width="724px" Height="100%" ShowBackButton="False" ShowCredentialPrompts="False"
+                            ShowDocumentMapButton="False" ShowFindControls="False" ShowPageNavigationControls="True"
+                            ShowParameterPrompts="False" ShowPromptAreaButton="False" ShowRefreshButton="False"
+                            SizeToReportContent="True">
+                            <LocalReport ReportPath="Admin\Reports\HRIS\EmployeeReport.rdlc" EnableExternalImages="True"
+                                EnableHyperlinks="true">
+                            </LocalReport>
+                        </rsweb:ReportViewer>
+                    </div>
+                </ContentTemplate>
+            </asp:UpdatePanel>
+        </div>
+    </div>
+    </form>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="FooterScriptContents" runat="Server">
+    <%--<script type="text/javascript" src="<%= Page.ResolveClientUrl ("~/Admin/assets/kendo/kendo.all.min.js") %>"></script>--%>
+    <script type="text/javascript" src="<%= Page.ResolveClientUrl("~/Admin/assets/js/components/panel.js") %>"></script>
+    <%--<script type="text/javascript" src="<%= Page.ResolveClientUrl("~/Admin/assets/jquery-ui/jquery-ui.js") %>"></script>--%>
+    <script type="text/javascript" src="<%= Page.ResolveClientUrl("~/Admin/assets/vendor/bootstrap-datepicker/bootstrap-datepicker.js") %>"></script>
+    <script type="text/javascript" src="<%= Page.ResolveClientUrl ("~/Admin/assets/js/components/bootstrap-datepicker.js") %>"></script>
+    <script type="text/javascript" src="<%= Page.ResolveClientUrl("~/Scripts/jquery.number.min.js") %>"></script>
+    <script type="text/javascript">
+        function doPrint() {
+            $('#<%= ReportViewer1.ClientID %>' + '_fixedTable').find('tr:eq(2)').hide();
+            //var prtContent = document.getElementById('<%= ReportViewer1.ClientID %>' + '_fixedTable');
+            //var prtContent = $('#<%= ReportViewer1.ClientID %>' + '_fixedTable').find('tr:eq(5)').html();
+            var prtContent = $('#<%= ReportViewer1.ClientID %>' + '_fixedTable').find('tbody tr:nth-child(4)').html();
+            $('#<%= ReportViewer1.ClientID %>' + '_fixedTable').find('tr:eq(2)').show();
+            //var prtContent = $("[id$='_ReportArea']").html();
+
+
+            var frame1 = $('<iframe />');
+            frame1[0].name = "frame1";
+            frame1.css({ "position": "absolute", "top": "-1000000px" });
+            $("body").append(frame1);
+            var frameDoc = frame1[0].contentWindow ? frame1[0].contentWindow : frame1[0].contentDocument.document ? frame1[0].contentDocument.document : frame1[0].contentDocument;
+            frameDoc.document.open();
+            //Create a new HTML document.
+            frameDoc.document.write('<html><head><title>DIV Contents</title>');
+            frameDoc.document.write('</head><body>');
+            //Append the external CSS file.
+            var styles = $('#ctl00_BodyContents_ReportViewer1_ctl09_ReportControl_styles');
+            styles = '<style type="text/css">' + styles.html() + '</style>';
+            frameDoc.document.write(styles);
+            //frameDoc.document.write('<link rel="stylesheet" href="../assets/css/fonts.css?family=Roboto:300,400,500,300italic" />');
+            //Append the DIV contents.
+            frameDoc.document.write(prtContent);
+            frameDoc.document.write('</body></html>');
+            frameDoc.document.close();
+            setTimeout(function () {
+                window.frames["frame1"].focus();
+                window.frames["frame1"].print();
+                frame1.remove();
+            }, 500);
+        }
+
+    </script>
+</asp:Content>

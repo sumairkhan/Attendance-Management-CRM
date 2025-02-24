@@ -1,0 +1,207 @@
+﻿Imports System.Data
+Imports Microsoft.Reporting.WebForms
+
+Partial Class Admin_Reports_HRIS_EmployeeReport
+    Inherits System.Web.UI.Page
+    Dim lstEmployeeAndCompanyID As List(Of Integer) = PortalUtilities.fnEmployeeAndCompanyID(Membership.GetUser(User.Identity.Name).ProviderUserKey)
+
+    Protected Sub Page_Load(ByVal sender As Object, ByVal e As System.EventArgs) Handles Me.Load
+        If Not Page.IsPostBack Then
+            Dim haveRights = PortalUtilities.fnHaveRights(lstEmployeeAndCompanyID(0), PortalUtilities.MenuLinks.AddEmployees)
+            If Not haveRights Then Response.Redirect("~/Admin/")
+            Try
+                Using cntx As New PortalModel.PortalEntities
+                    Dim objEmpRights = cntx.sp_GetPageRightsByEmpAndMenuLinkID(lstEmployeeAndCompanyID(0), PortalUtilities.MenuLinks.AddEmployees).Where(Function(f) f.EmpRightID > 0).ToList()
+                    Dim lstInnerRights = objEmpRights.Select(Function(f) f.Title).ToList()
+                    If lstInnerRights.Count <= 0 Then
+                        Response.Redirect("~/Admin/")
+                    End If
+
+
+                    Dim intID As Integer = 0
+                    If Not IsNothing(Request.QueryString("id")) Then
+                        intID = Convert.ToInt32(Request.QueryString("id"))
+                    End If
+
+
+                    If intID > 0 Then
+                        Dim objEmp = cntx.Employees.Where(Function(f) f.EmployeeID = intID).ToList().FirstOrDefault()
+                        If lstInnerRights.Contains("View Other Department") AndAlso lstInnerRights.Contains("View Self Department") Then
+
+                        ElseIf Not lstInnerRights.Contains("View Other Department") AndAlso lstInnerRights.Contains("View Self Department") AndAlso lstEmployeeAndCompanyID(2) <> objEmp.DepartmentID Then
+                            Response.Redirect("~/Admin/")
+                        ElseIf Not lstInnerRights.Contains("View Other Department") AndAlso Not lstInnerRights.Contains("View Self Department") AndAlso lstEmployeeAndCompanyID(0) <> Convert.ToInt32(Request.QueryString("id")) Then
+                            Response.Redirect("~/Admin/")
+                        End If
+                        GetReport(cntx, intID)
+                    End If
+                End Using
+            Catch ex As Exception
+                lblStatus.Text = ex.Message
+                lblStatus.ForeColor = Drawing.Color.Red
+            End Try
+        End If
+    End Sub
+
+
+    Private Sub GetReport(cntx As PortalModel.PortalEntities, ByVal intID As Integer)
+        ReportViewer1.LocalReport.DataSources.Clear()
+
+
+        Dim obj = cntx.Employees().Where(Function(f) f.EmployeeID = intID).ToList().FirstOrDefault()
+        If obj Is Nothing Then
+            lblStatus.Text = "Record not found"
+            lblStatus.ForeColor = Drawing.Color.Red
+            Return
+        End If
+
+
+
+        Dim objDept = cntx.Departments.Where(Function(f) f.DepartmentID = obj.DepartmentID).ToList().FirstOrDefault()
+
+        Dim FirstName As New Microsoft.Reporting.WebForms.ReportParameter("FirstName", obj.FirstName)
+        Dim LastName As New Microsoft.Reporting.WebForms.ReportParameter("LastName", obj.LastName)
+        Dim FName As New Microsoft.Reporting.WebForms.ReportParameter("FName", obj.FatherName)
+        Dim Gender As New Microsoft.Reporting.WebForms.ReportParameter("Gender", obj.Gender)
+        Dim Religion As New Microsoft.Reporting.WebForms.ReportParameter("Religion", obj.Religion)
+        Dim Nationality As New Microsoft.Reporting.WebForms.ReportParameter("Nationality", obj.Nationality)
+        Dim PhoneNo As New Microsoft.Reporting.WebForms.ReportParameter("PhoneNo", obj.ContactNo)
+        Dim MobileNo As New Microsoft.Reporting.WebForms.ReportParameter("MobileNo", obj.MobileNo)
+        Dim CNIC As New Microsoft.Reporting.WebForms.ReportParameter("CNIC", obj.CNICNo)
+        Dim strCNICExpiry As String = String.Empty
+        If obj.CNICExpiry IsNot Nothing Then strCNICExpiry = Format(obj.CNICExpiry, "dd-MMM-yyyy")
+        Dim CNICExpiry As New Microsoft.Reporting.WebForms.ReportParameter("CNICExpiry", strCNICExpiry)
+
+        Dim Email As New Microsoft.Reporting.WebForms.ReportParameter("Email", obj.Email)
+        Dim Dept As New Microsoft.Reporting.WebForms.ReportParameter("Dept" & objDept.Title)
+        Dim Address As New Microsoft.Reporting.WebForms.ReportParameter("Address", obj.Address)
+        Dim LastQualification As New Microsoft.Reporting.WebForms.ReportParameter("LastQualification", obj.LastQualification)
+
+        Dim strDOB As String = String.Empty
+        If obj.DOB IsNot Nothing Then strDOB = Format(obj.DOB, "dd-MMM-yyyy")
+        Dim DOB As New Microsoft.Reporting.WebForms.ReportParameter("DOB", strDOB)
+
+
+        Dim MaritalStatus As New Microsoft.Reporting.WebForms.ReportParameter("MaritalStatus", obj.MaritalStatus)
+
+        Dim strDOJ As String = String.Empty
+        If obj.JoiningDate IsNot Nothing Then strDOJ = Format(obj.JoiningDate, "dd-MMM-yyyy")
+        Dim DOJ As New Microsoft.Reporting.WebForms.ReportParameter("DOJ", strDOJ)
+
+        Dim CurrentDesignation As New Microsoft.Reporting.WebForms.ReportParameter("CurrentDesignation", obj.CurrentDesignation)
+        Dim strJoiningSalary As String = String.Empty
+        If obj.JoiningSalary IsNot Nothing Then strJoiningSalary = obj.JoiningSalary
+        Dim strCurrentSalary As String = String.Empty
+        If obj.CurrentSalary IsNot Nothing Then strCurrentSalary = obj.CurrentSalary
+        Dim JoiningSalary As New Microsoft.Reporting.WebForms.ReportParameter("JoiningSalary", strJoiningSalary)
+        Dim CurrentSalary As New Microsoft.Reporting.WebForms.ReportParameter("CurrentSalary", strCurrentSalary)
+
+        Dim Status As New Microsoft.Reporting.WebForms.ReportParameter("Status", obj.JobStatus)
+
+        Dim strStatusDate As String = String.Empty
+        If obj.JobStatusDate IsNot Nothing Then strStatusDate = Format(obj.JobStatusDate, "dd-MMM-yyyy")
+        Dim StatusDate As New Microsoft.Reporting.WebForms.ReportParameter("StatusDate", strStatusDate)
+
+        Dim StatusReason As New Microsoft.Reporting.WebForms.ReportParameter("StatusReason", obj.JobStatusDescription)
+        Dim EmpID As New Microsoft.Reporting.WebForms.ReportParameter("EmpID", obj.EmpAttendanceID)
+
+
+        Dim EmFullName As New Microsoft.Reporting.WebForms.ReportParameter("EmFullName", obj.EmergencyContactName)
+        Dim EmRelationship As New Microsoft.Reporting.WebForms.ReportParameter("EmRelationship", obj.EmergencyContactRelationship)
+        Dim EmPrimaryPhone As New Microsoft.Reporting.WebForms.ReportParameter("EmPrimaryPhone", obj.EmergencyContactPrimaryPhone)
+        Dim EmAlternatePhone As New Microsoft.Reporting.WebForms.ReportParameter("EmAlternatePhone", obj.EmergencyContactAlternatePhone)
+        Dim EmAddress As New Microsoft.Reporting.WebForms.ReportParameter("EmAddress", obj.EmergencyContactAddress)
+        Dim imgPath As String = String.Empty
+        If obj.ProfileImagePath IsNot Nothing Then
+            imgPath = New Uri(Server.MapPath(ConfigurationManager.AppSettings("FileUploadPath") & obj.ProfileImagePath)).AbsoluteUri
+        End If
+        Dim ProfilePic As New Microsoft.Reporting.WebForms.ReportParameter("ProfilePic", imgPath)
+
+        Dim objListAssests = cntx.sp_GetAssetsByEmployeeID(intID).Where(Function(f) f.EmployeeAssetID > 0).OrderBy(Function(f) f.AssetsID).ToList()
+        Dim objListAttachments = cntx.sp_GetAllAttachmentsByEmployeeID(intID).OrderBy(Function(f) f.EmployeeAttachmentID).ToList()
+
+
+        Dim objReportDataSourceAssets As ReportDataSource = New ReportDataSource("dsAssetsList", objListAssests)
+        Dim objReportDataSourceAttachments As ReportDataSource = New ReportDataSource("dsAttachmentsList", objListAttachments)
+        ReportViewer1.LocalReport.DataSources.Add(objReportDataSourceAssets)
+        ReportViewer1.LocalReport.DataSources.Add(objReportDataSourceAttachments)
+        ReportViewer1.LocalReport.ReportPath = Server.MapPath("~/Admin/Reports/HRIS/EmployeeReport.rdlc")
+
+        ReportViewer1.LocalReport.SetParameters(FirstName)
+        ReportViewer1.LocalReport.SetParameters(LastName)
+        ReportViewer1.LocalReport.SetParameters(FName)
+        ReportViewer1.LocalReport.SetParameters(Gender)
+        ReportViewer1.LocalReport.SetParameters(Religion)
+        ReportViewer1.LocalReport.SetParameters(Nationality)
+        ReportViewer1.LocalReport.SetParameters(PhoneNo)
+        ReportViewer1.LocalReport.SetParameters(MobileNo)
+        ReportViewer1.LocalReport.SetParameters(CNIC)
+        ReportViewer1.LocalReport.SetParameters(CNICExpiry)
+        ReportViewer1.LocalReport.SetParameters(Email)
+        ReportViewer1.LocalReport.SetParameters(Dept)
+        ReportViewer1.LocalReport.SetParameters(Address)
+        ReportViewer1.LocalReport.SetParameters(LastQualification)
+        ReportViewer1.LocalReport.SetParameters(DOB)
+        ReportViewer1.LocalReport.SetParameters(CurrentDesignation)
+        ReportViewer1.LocalReport.SetParameters(JoiningSalary)
+        ReportViewer1.LocalReport.SetParameters(CurrentSalary)
+        ReportViewer1.LocalReport.SetParameters(Status)
+        ReportViewer1.LocalReport.SetParameters(StatusDate)
+        ReportViewer1.LocalReport.SetParameters(StatusReason)
+        ReportViewer1.LocalReport.SetParameters(EmpID)
+        ReportViewer1.LocalReport.SetParameters(EmFullName)
+        ReportViewer1.LocalReport.SetParameters(EmRelationship)
+        ReportViewer1.LocalReport.SetParameters(EmPrimaryPhone)
+        ReportViewer1.LocalReport.SetParameters(EmAlternatePhone)
+        ReportViewer1.LocalReport.SetParameters(EmAddress)
+        ReportViewer1.LocalReport.SetParameters(ProfilePic)
+
+
+
+
+        Dim objEmpQualification = cntx.EmployeesQualifications.Where(Function(f) f.EmpolyeeID = intID).OrderByDescending(Function(f) f.EmployeeQualificationID).Take(3).ToList()
+        Dim count As Integer = 3
+        For Each objQ In objEmpQualification
+
+            Dim ExpInst As New Microsoft.Reporting.WebForms.ReportParameter("Inst" & count, objQ.InstituteName)
+            Dim ExpMajor As New Microsoft.Reporting.WebForms.ReportParameter("Major" & count, objQ.Major)
+            Dim ExpQualification As New Microsoft.Reporting.WebForms.ReportParameter("Qualification" & count, objQ.Qualifaction)
+            Dim ExpYear As New Microsoft.Reporting.WebForms.ReportParameter("Year" & count, objQ.CompletedYear)
+            Dim ExpGrade As New Microsoft.Reporting.WebForms.ReportParameter("Grade" & count, objQ.GradeCGPA)
+
+            ReportViewer1.LocalReport.SetParameters(ExpInst)
+            ReportViewer1.LocalReport.SetParameters(ExpMajor)
+            ReportViewer1.LocalReport.SetParameters(ExpQualification)
+            ReportViewer1.LocalReport.SetParameters(ExpYear)
+            ReportViewer1.LocalReport.SetParameters(ExpGrade)
+
+            count = count - 1
+        Next
+
+
+        Dim objEmpExperience = cntx.EmployeesExperiences.Where(Function(f) f.EmpolyeeID = intID).OrderByDescending(Function(f) f.EmployeeExperienceID).Take(3).ToList()
+        count = 3
+        For Each objQ In objEmpExperience
+            'DirectCast(form1.FindControl("hdnExperience" & count), HiddenField).Value = objQ.EmployeeExperienceID
+            Dim ExpDes As New Microsoft.Reporting.WebForms.ReportParameter("Des" & count, objQ.Designation)
+            Dim ExpOrganization As New Microsoft.Reporting.WebForms.ReportParameter("Org" & count, objQ.Organization)
+            Dim ExpPeriod As New Microsoft.Reporting.WebForms.ReportParameter("Period" & count, objQ.Period)
+            Dim ExpReason As New Microsoft.Reporting.WebForms.ReportParameter("Reason" & count, objQ.Reason)
+
+            ReportViewer1.LocalReport.SetParameters(ExpDes)
+            ReportViewer1.LocalReport.SetParameters(ExpOrganization)
+            ReportViewer1.LocalReport.SetParameters(ExpPeriod)
+            ReportViewer1.LocalReport.SetParameters(ExpReason)
+            count = count - 1
+        Next
+
+
+
+        ReportViewer1.LocalReport.EnableExternalImages = True
+        ReportViewer1.DataBind()
+        ReportViewer1.LocalReport.Refresh()
+
+        divReportArea.Visible = True
+    End Sub
+
+End Class
